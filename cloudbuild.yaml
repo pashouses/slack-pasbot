@@ -1,0 +1,32 @@
+steps:
+  - id: test
+    name: golang:latest
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        go test ./...
+  # Build the container image
+  - id: build
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'asia-southeast2-docker.pkg.dev/pas-gcp-servers-mainship/slack-pasbot/app:latest', '.']
+  # Push the container image to Artifact Registry
+  - id: push-container
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-southeast2-docker.pkg.dev/pas-gcp-servers-mainship/slack-pasbot/app:latest']
+  - id: deploy-slack-api
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud run deploy slack-pasbot --image asia-southeast2-docker.pkg.dev/pas-gcp-servers-mainship/slack-pasbot/app:latest \
+          --region=asia-southeast2 --allow-unauthenticated --timeout 10s \
+          --min-instances 0 --max-instances 10 --cpu 1 --memory 128Mi \
+          --set-secrets SLACK_SIGNING_SECRET=slack_pasbot_signing_secret:latest,SLACK_BOT_TOKEN=slack_pasbot_token:latest \
+          --tag=main
+        gcloud run services update-traffic slack-pasbot \
+          --to-tags main=100 \
+          --region=asia-southeast2
+options:
+  logging: CLOUD_LOGGING_ONLY
