@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 
@@ -32,17 +32,11 @@ func parseSubteam(txt string) SlackSubteam {
 	return subteam
 }
 
-func respondToSlack(w http.ResponseWriter, msg string, channelID string) {
-	resp := &slack.Msg{
-		Text: msg,
-		// https://api.slack.com/interactivity/slash-commands#responding_immediate_response
-		ResponseType: "in_channel",
-	}
-	b, err := json.Marshal(resp)
+func respondToSlack(w http.ResponseWriter, msg string, sClient slack.Client, s slack.SlashCommand) {
+	channelID, timestamp, err := sClient.PostMessage(s.ChannelID, slack.MsgOptionText(msg, false))
+	fmt.Printf("Slack message is sent successfully to %s at %s: %s", channelID, timestamp, msg)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		fmt.Printf("Error: %v\n", err)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+	w.WriteHeader(200)
 }

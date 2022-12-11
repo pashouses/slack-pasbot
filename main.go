@@ -36,7 +36,7 @@ func main() {
 		switch s.Command {
 		case "/shuffle":
 			resTxt := handleShuffle(sClient, s)
-			respondToSlack(w, resTxt, s.ChannelID)
+			respondToSlack(w, resTxt, *sClient, s)
 			return
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
