@@ -12,6 +12,7 @@ import (
 type SlackClientIFace interface {
 	GetUserGroupMembers(userGroup string) ([]string, error)
 	GetUsersInConversation(params *slack.GetUsersInConversationParameters) ([]string, string, error)
+	GetUsersInfo(users ...string) (*[]slack.User, error)
 }
 
 // Format <!Name^VALUE|Text>

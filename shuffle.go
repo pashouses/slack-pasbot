@@ -35,18 +35,28 @@ func handleShuffle(sClient SlackClientIFace, s slack.SlashCommand) string {
 			return errText
 		}
 	} else {
-		return "Incorrect format, should be /shuffle @team-name [1 = include self] [number]"
+		errTxt := "Incorrect format, should be /shuffle @team-name [1 = include self] [number]"
+		fmt.Println(errTxt)
+		return errTxt
 	}
 	fmt.Printf("Members of %s: %v\n", source, userIDs)
 	includeSelf := len(params) > 1 && params[1] == "1"
 	idsToBeShuffled := []string{}
-	for _, mID := range userIDs {
-		if includeSelf || mID != s.UserID {
-			idsToBeShuffled = append(idsToBeShuffled, mID)
+	usersInfo, err := sClient.GetUsersInfo(userIDs...)
+	if err != nil {
+		errStr := fmt.Sprintf("Cannot get users info: %v", userIDs)
+		fmt.Println(errStr)
+		return errStr
+	}
+	for _, u := range *usersInfo {
+		if (includeSelf || u.ID != s.UserID) && !u.IsBot {
+			idsToBeShuffled = append(idsToBeShuffled, u.ID)
 		}
 	}
 	if len(idsToBeShuffled) == 0 {
-		return fmt.Sprintf("Source %s does not have any members", source)
+		errStr := fmt.Sprintf("(%s) does not have any members", source)
+		fmt.Println(errStr)
+		return errStr
 	}
 	shuffle(idsToBeShuffled)
 	fmt.Printf("Shuffle result: %v\n", idsToBeShuffled)
@@ -69,5 +79,5 @@ func handleShuffle(sClient SlackClientIFace, s slack.SlashCommand) string {
 	}
 	selectedStr := strings.Join(selectedIDs, ", ")
 	fmt.Printf("Selected member(s): %s\n", selectedStr)
-	return fmt.Sprintf("%s from %s, nominated by %s", selectedStr, source, s.UserName)
+	return fmt.Sprintf("%s (%s), nominated by %s", selectedStr, source, s.UserName)
 }
