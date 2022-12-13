@@ -4,32 +4,42 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/slack-go/slack"
 )
 
 type SlackClientIFace interface {
 	GetUserGroupMembers(userGroup string) ([]string, error)
+	GetUsersInConversation(params *slack.GetUsersInConversationParameters) ([]string, string, error)
 }
 
-type SlackSubteam struct {
-	Name string
-	ID   string
+// Format <!Name^VALUE|Text>
+// Example:
+// <!subteam^TEAMID|@team>
+// <!here>
+// <!channel|@channel>
+type SlackTag struct {
+	Name  string
+	Value string
+	Text  string
 }
 
-func parseSubteam(txt string) SlackSubteam {
-	r := regexp.MustCompile(`^<!subteam\^(?P<teamid>[A-Z]\w+)\|(?P<teamname>@.+)>$`)
-	subteam := SlackSubteam{}
+func parseSlackTag(txt string) SlackTag {
+	tag := SlackTag{}
+	if strings.HasPrefix(txt, "@") {
+		tag.Name = strings.Replace(txt, "@", "", 1)
+		return tag
+	}
+	r := regexp.MustCompile(`^<!(?P<tagname>\w+)(?P<tagvalue>\^[A-Z0-9]+)?(?P<text>\|@?.+)?>$`)
 	submatch := r.FindStringSubmatch(txt)
 	if len(submatch) == 0 {
-		return subteam
+		return tag
 	}
-	matchGroup := r.SubexpNames()
-	if len(matchGroup) == 3 {
-		subteam.ID = r.ReplaceAllString(txt, "${teamid}")
-		subteam.Name = r.ReplaceAllString(txt, "${teamname}")
-	}
-	return subteam
+	tag.Name = r.ReplaceAllString(txt, "${tagname}")
+	tag.Value = strings.Replace(r.ReplaceAllString(txt, "${tagvalue}"), "^", "", 1)
+	tag.Text = strings.Replace(r.ReplaceAllString(txt, "${text}"), "|", "", 1)
+	return tag
 }
 
 func respondToSlack(w http.ResponseWriter, msg string, sClient slack.Client, s slack.SlashCommand) {

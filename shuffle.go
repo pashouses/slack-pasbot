@@ -10,31 +10,49 @@ import (
 
 func handleShuffle(sClient SlackClientIFace, s slack.SlashCommand) string {
 	params := strings.Split(s.Text, " ")
-	subteam := parseSubteam(params[0])
-	if subteam.ID == "" {
+	tag := parseSlackTag(params[0])
+	var source string
+	var userIDs []string
+	if tag.Name == "subteam" && tag.Value != "" && tag.Text != "" {
+		// Subteam
+		source = tag.Text
+		var err error
+		userIDs, err = sClient.GetUserGroupMembers(tag.Value)
+		if err != nil {
+			errText := fmt.Sprintf("Error: %v\n", err)
+			fmt.Print(errText)
+			return errText
+		}
+	} else if tag.Name == "here" || tag.Name == "channel" {
+		// Current channel
+		source = tag.Name
+		var err error
+		params := slack.GetUsersInConversationParameters{ChannelID: s.ChannelID}
+		userIDs, _, err = sClient.GetUsersInConversation(&params)
+		if err != nil {
+			errText := fmt.Sprintf("Error: %v\n", err)
+			fmt.Print(errText)
+			return errText
+		}
+	} else {
 		return "Incorrect format, should be /shuffle @team-name [1 = include self] [number]"
 	}
-	teamMemberIDs, err := sClient.GetUserGroupMembers(subteam.ID)
-	if err != nil {
-		errText := fmt.Sprintf("Error: %v\n", err)
-		fmt.Print(errText)
-		return errText
-	}
-	fmt.Printf("Members of %s: %v\n", subteam.Name, teamMemberIDs)
+	fmt.Printf("Members of %s: %v\n", source, userIDs)
 	includeSelf := len(params) > 1 && params[1] == "1"
 	idsToBeShuffled := []string{}
-	for _, mID := range teamMemberIDs {
+	for _, mID := range userIDs {
 		if includeSelf || mID != s.UserID {
 			idsToBeShuffled = append(idsToBeShuffled, mID)
 		}
 	}
 	if len(idsToBeShuffled) == 0 {
-		return fmt.Sprintf("Group %s does not have any members", subteam.Name)
+		return fmt.Sprintf("Source %s does not have any members", source)
 	}
 	shuffle(idsToBeShuffled)
 	fmt.Printf("Shuffle result: %v\n", idsToBeShuffled)
 	number := 1
 	if len(params) == 3 {
+		var err error
 		number, err = strconv.Atoi(params[2])
 		if err != nil {
 			number = 1
@@ -51,5 +69,5 @@ func handleShuffle(sClient SlackClientIFace, s slack.SlashCommand) string {
 	}
 	selectedStr := strings.Join(selectedIDs, ", ")
 	fmt.Printf("Selected member(s): %s\n", selectedStr)
-	return fmt.Sprintf("%s from %s, nominated by %s", selectedStr, subteam.Name, s.UserName)
+	return fmt.Sprintf("%s from %s, nominated by %s", selectedStr, source, s.UserName)
 }
