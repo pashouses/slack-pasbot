@@ -6,13 +6,10 @@ import (
 )
 
 func shuffle(names []string) {
-	var tmp string
-	for i := 0; i < len(names); i++ {
-		rd := randInt(len(names))
+	for i := len(names) - 1; i > 0; i-- {
+		rd := randInt(i + 1)
 		// Swap names
-		tmp = names[i]
-		names[i] = names[rd]
-		names[rd] = tmp
+		names[i], names[rd] = names[rd], names[i]
 	}
 }
 

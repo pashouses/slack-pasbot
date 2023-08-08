@@ -27,6 +27,7 @@ func TestRandIntDistribution(t *testing.T) {
 	// Print to console to see distribution
 	for i := 0; i < length; i++ {
 		percent := float64(counts[i]) / float64(repeats)
+		t.Logf("%f\n", percent)
 		if percent > 0.11 || percent < 0.09 {
 			t.Errorf("Random distribution is not uniform, expected: 0.1, actual: %f\n", percent)
 		}
@@ -54,6 +55,7 @@ func TestShuffleDistribution(t *testing.T) {
 	}
 	for _, counts := range countMap {
 		percent := float64(counts) / float64(repeats)
+		t.Logf("%f\n", percent)
 		if percent > 0.11 || percent < 0.09 {
 			t.Errorf("Random distribution is not uniform, expected: 0.1, actual: %f\n", percent)
 		}
